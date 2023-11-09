@@ -1,0 +1,63 @@
+
+-- Create dim_user table
+CREATE TABLE dim_user AS
+SELECT user_id, user_name, country
+FROM raw_users;
+
+-- Create dim_post table
+CREATE TABLE dim_post AS
+SELECT post_id, post_text, post_date, user_id
+FROM raw_posts;
+
+-- Create dim_date table
+CREATE TABLE dim_date AS
+SELECT DISTINCT post_date
+FROM raw_posts;
+
+
+INSERT INTO raw_users 
+SELECT 'id' AS '1' , 'name' AS 'john_doe' , 'country' AS 'Canada'
+UNION all select 'id' , 'name' , 'country'  
+
+
+INSERT INTO raw_posts (post_id, post_text, post_date, user_id)
+SELECT 101, 'My first post!', '2020-01-01', 1
+UNION ALL
+SELECT 102, 'Having fun learning SQL', '2020-01-02', 2
+UNION ALL
+SELECT 103, 'Big data is cool', '2020-01-03', 1;
+
+INSERT INTO raw_posts (like_id, user_id, post_id, like_date)
+SELECT 1001, 1, 101, '2020-01-01'
+UNION ALL
+SELECT 1002, 3, 101, '2020-01-02',
+union all 
+select 1003, 2, 102, '2020-01-03',
+
+-- For dim_date, using data from raw_posts as follows:
+INSERT INTO dim_date (post_date)
+SELECT DISTINCT post_date
+FROM raw_posts;
+
+-- Create fact_post_performance table
+CREATE TABLE fact_post_performance AS
+SELECT
+    dp.post_id,
+    dd.post_date,
+    COUNT(DISTINCT rl.user_id) AS likes,
+    COUNT(DISTINCT dpv.user_id) AS views
+FROM dim_post dp
+JOIN dim_date dd ON dp.post_date = dd.post_date
+LEFT JOIN raw_likes rl ON dp.post_id = rl.post_id
+LEFT JOIN (SELECT post_id, user_id FROM raw_likes GROUP BY post_id, user_id) dpv ON dp.post_id = dpv.post_id
+GROUP BY dp.post_id, dd.post_date;
+
+-- Create fact_daily_posts table
+CREATE TABLE fact_daily_posts AS
+SELECT
+    r.user_id,
+    dp.post_date,
+    COUNT(DISTINCT dp.post_id) AS daily_posts
+FROM raw_users r
+JOIN dim_post dp ON r.user_id = dp.user_id
+GROUP BY r.user_id, dp.post_date;
